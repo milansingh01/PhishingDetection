@@ -1,0 +1,50 @@
+-- EMPLOYEES
+CREATE TABLE employees (
+  emp_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  role TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- FRAUD TEAM
+CREATE TABLE fraud_team (
+  team_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  designation TEXT
+);
+
+-- LOGIN LOGS
+CREATE TABLE login_logs (
+  log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  emp_id INTEGER,
+  status TEXT,
+  login_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id)
+);
+
+-- DETECTED CONTENT
+CREATE TABLE detected_content (
+  content_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  emp_id INTEGER,
+  content_type TEXT,
+  content_text TEXT,
+  fraud_score REAL,
+  is_phishing INTEGER,
+  detected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (emp_id) REFERENCES employees(emp_id)
+);
+
+-- REVIEWS
+CREATE TABLE reviews (
+  review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  team_id INTEGER,
+  content_id INTEGER,
+  verdict TEXT,
+  remarks TEXT,
+  reviewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (team_id) REFERENCES fraud_team(team_id),
+  FOREIGN KEY (content_id) REFERENCES detected_content(content_id)
+);
