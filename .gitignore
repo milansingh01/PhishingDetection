@@ -1,0 +1,7 @@
+env
+
+employees.db
+
+__pycache__
+
+backend/models/phishing_model/
