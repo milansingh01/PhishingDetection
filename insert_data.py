@@ -1,5 +1,5 @@
 from backend.db.database import SessionLocal
-from backend.db.models import Employee
+from backend.db.models import User
 
 db = SessionLocal()
 
@@ -10,10 +10,10 @@ users = [
 ]
 
 for user in users:
-    exists = db.query(Employee).filter_by(email=user["email"]).first()
+    exists = db.query(User).filter_by(email=user["email"]).first()
 
     if not exists:
-        db.add(Employee(**user))
+        db.add(User(**user))
         print(f"Added: {user['email']}")
     else:
         print(f"Already exists: {user['email']}")

@@ -22,7 +22,7 @@ def login(req: LoginRequest):
 
     token = create_access_token({
         "email": user["email"],
-        "role": user["role"]
+        "password": user["password"]
     })
 
     return {

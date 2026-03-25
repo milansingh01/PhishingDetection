@@ -16,7 +16,8 @@ def authenticate_user(email, password):
     if user and user.password == password:
         return {
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "password": user.password
         }
 
     return None
