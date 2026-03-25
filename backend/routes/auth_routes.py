@@ -3,9 +3,7 @@ from pydantic import BaseModel
 from backend.auth import authenticate_user
 from backend.utils.jwt_utils import create_access_token
 
-# 🔥 THIS NAME MUST BE EXACT
 router = APIRouter()
-
 
 class LoginRequest(BaseModel):
     email: str
