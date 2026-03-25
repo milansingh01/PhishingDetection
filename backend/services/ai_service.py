@@ -1,17 +1,14 @@
 import os
 from transformers import pipeline
 
-# 1. Get the absolute path to the directory this file is in (backend/services)
+# 1. Setup paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 2. Go up one level to 'backend', then into 'models/phishing_model'
-# This creates a path Windows actually understands: M:\PhishingDetection\backend\models\phishing_model
 model_path = os.path.abspath(os.path.join(current_dir, "..", "models", "phishing_model"))
 
-# 3. Double-check the folder exists before loading (optional but helpful)
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"Could not find model at {model_path}")
 
+# 2. Initialize the AI
 classifier = pipeline(
     "text-classification",
     model=model_path,
@@ -19,8 +16,22 @@ classifier = pipeline(
 )
 
 def analyze_input(content, input_type):
-    result = classifier(content)[0]
-    return {
-        "label": result["label"],
-        "score": str(round(result["score"] * 100, 2)) + "%"
-    }
+    result = classifier(content)
+    
+    if isinstance(result, list) and len(result) > 0:
+        prediction = result[0]
+        raw_score = prediction['score']
+        
+        # Format for the user
+        confidence_pct = f"{round(raw_score * 100, 2)}%"
+        label = "Phishing" if prediction['label'] == "phishing" else "Safe"
+
+        return {
+            "label": label,
+            "confidence": confidence_pct,
+            "score": raw_score,      # <--- ADD THIS LINE
+            "raw_score": raw_score,  # (Keeping this too just in case)
+            "explanation": f"Analysis complete with {confidence_pct} confidence."
+        }
+    
+    return {"label": "Error", "score": 0.0}
