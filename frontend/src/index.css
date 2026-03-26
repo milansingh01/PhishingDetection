@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom global styling for real UI feel */
+body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: #f3f5f7;
+}
