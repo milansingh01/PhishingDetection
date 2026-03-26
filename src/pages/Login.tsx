@@ -1,132 +1,131 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Shield, Lock, User, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import barclaysLogo from "@/assets/barclays-logo.png";
-import loginIcon from "@/assets/login.png";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { User, Lock, ArrowRight } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
+  // Changed state name to 'email' to match your Backend Model
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !password) {
-      toast.error("Please enter both username and password");
-      return;
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  
+  try {
+    const response = await fetch("http://localhost:9000/fraud-auth/login", { 
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Must match the 'email' field in your FraudAnalyst Python model
+      body: JSON.stringify({ email: email, password: password }), 
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      localStorage.setItem("fraud_token", data.access_token);
+      toast({
+        title: "Access Granted",
+        description: `Authenticated as ${email}`,
+      });
+      navigate("/dashboard"); 
+    } else {
+      // THE SAFETY FIX: Prevents white screen by ensuring we only pass a string to toast
+      const errorMsg = typeof data.detail === "string" ? data.detail : "Invalid Analyst Credentials";
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: errorMsg,
+      });
     }
-
-    setIsLoading(true);
-    // Simulate auth delay
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success("Login successful");
-      navigate("/");
-    }, 1200);
-  };
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "System Error",
+      description: "Backend server (Port 9000) is offline.",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decorators */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
+    <div className="flex min-h-screen items-center justify-center bg-[#f4f7f9] p-4 font-sans">
+      <div className="w-full max-w-[400px] space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        
+        {/* Branding Section */}
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 text-[#00aeef]">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+               <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-[#1e293b]">Fraud Detection Team</h1>
+          <p className="text-sm text-gray-500 font-medium tracking-tight">Secure Access Gateway</p>
+        </div>
 
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md"
-      >
-        <div className="glass-card p-8 md:p-10 flex flex-col items-center relative z-10 shadow-2xl border border-primary/10">
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-4">
+            {/* Email Field - Updated to match FraudAnalyst */}
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input 
+                type="email" 
+                placeholder="analyst@barclays.com" 
+                className="pl-11 h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all rounded-lg"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required 
+              />
+            </div>
 
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="w-24 h-24 flex items-center justify-center mb-6"
-          >
-            <img
-              src={loginIcon}
-              alt="Barclays Eagle"
-              className="w-16 h-16 object-contain"
-            />
-          </motion.div>
-
-          {/* Logo & Branding */}
-          <div className="text-center mb-8">
-            <img
-              src={barclaysLogo}
-              alt="Barclays Logo"
-              className="h-16 mx-auto brightness-0 dark:invert object-contain mb-4"
-            />
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              Fraud Detection Team
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2 font-medium">
-              Secure Access Gateway
-            </p>
+            {/* Password Field */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                className="pl-11 h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all rounded-lg"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required 
+              />
+            </div>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="w-full space-y-5">
-            <div className="space-y-4">
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Employee ID or Email"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-muted/50 border border-border/50 text-foreground rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium text-sm"
-                />
-              </div>
-
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-muted/50 border border-border/50 text-foreground rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium text-sm"
-                />
-              </div>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center space-x-2">
+              <Checkbox id="remember" />
+              <label htmlFor="remember" className="text-gray-600 cursor-pointer select-none">Remember me</label>
             </div>
+            <button type="button" className="text-[#00aeef] hover:underline font-medium">
+              Forgot password?
+            </button>
+          </div>
 
-            <div className="flex items-center justify-between text-xs font-medium px-1">
-              <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                <input type="checkbox" className="rounded border-border accent-primary" />
-                Remember me
-              </label>
-              <a href="#" className="text-primary hover:underline">Forgot password?</a>
-            </div>
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-[#00aeef] hover:bg-[#0096ce] text-white font-bold text-lg rounded-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            disabled={isLoading}
+          >
+            {isLoading ? "Verifying..." : (
+              <>
+                Secure Login <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </Button>
+        </form>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isLoading}
-              type="submit"
-              className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/40 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              ) : (
-                <>
-                  Secure Login
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </motion.button>
-          </form>
-
-          <p className="text-center text-xs text-muted-foreground mt-8">
-            Internal Use Only. Unauthorized access is strictly prohibited and monitored.
-          </p>
-        </div>
-      </motion.div>
+        <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest leading-relaxed">
+          Internal Use Only. Unauthorized access is strictly prohibited and monitored.
+        </p>
+      </div>
     </div>
   );
 };

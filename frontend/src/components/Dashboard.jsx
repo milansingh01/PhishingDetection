@@ -2,6 +2,7 @@ import { useState } from "react";
 import Header from "./Header";
 import { styles } from "../styles/styles";
 
+// --- Helper Functions for the Gauge Chart ---
 function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
   return {
@@ -25,7 +26,8 @@ export default function Dashboard({ setPage, currentOption }) {
   const [reasons, setReasons] = useState([]);
   const [action, setAction] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  const [fraudType, setFraudType] = useState("");
+  const [confidence, setConfidence] = useState(0);
   const [signals, setSignals] = useState({
     url: 0,
     text: 0,
@@ -33,48 +35,56 @@ export default function Dashboard({ setPage, currentOption }) {
     voice: 0,
   });
 
-  const [fraudType, setFraudType] = useState("");
-  const [confidence, setConfidence] = useState(0);
-
+  // --- Logic to Highlight Scam Keywords ---
   const highlightText = (text, reasons) => {
     if (!text || typeof text !== "string") return "";
     let highlighted = text;
-
     reasons.forEach((reason) => {
       const words = reason.split(" ").slice(0, 2);
       words.forEach((word) => {
         if (word.length > 4) {
           const regex = new RegExp(`(${word})`, "gi");
-          highlighted = highlighted.replace(
-            regex,
-            `<mark style="background:#ffcccc;">$1</mark>`
-          );
+          highlighted = highlighted.replace(regex, `<mark style="background:#ffcccc;">$1</mark>`);
         }
       });
     });
-
     return highlighted;
   };
 
+  // --- 🔥 THE CORE ANALYZE FUNCTION (DYNAMIZED) ---
   const analyze = async () => {
-    if (!email) return alert("Please enter content.");
+    if (!email) return alert("Please enter content or upload a file.");
 
     try {
       setStatus("Scanning...");
-
+      
+      // 1. Pull current user from localStorage (set during Login)
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      
       let body;
       let headers = {};
 
+      // 2. Determine if we are sending a File (FormData) or Text (JSON)
       if (currentOption === "Attachment" && email instanceof File) {
         const formData = new FormData();
         formData.append("file", email);
-        formData.append("type", currentOption);
+        formData.append("type", "attachment");
+        
+        // Sending real employee details for the Fraud Table
+        formData.append("employee_name", storedUser.name || "Anonymous");
+        formData.append("employee_email", storedUser.email || "unknown@barclays.com");
+        formData.append("department", storedUser.department || "General");
+        
         body = formData;
+        // Fetch automatically handles Content-Type for FormData
       } else {
         headers["Content-Type"] = "application/json";
         body = JSON.stringify({
           content: email,
-          type: currentOption,
+          type: currentOption || "email",
+          employee_name: storedUser.name || "Anonymous",
+          employee_email: storedUser.email || "unknown@barclays.com",
+          department: storedUser.department || "General",
         });
       }
 
@@ -86,29 +96,23 @@ export default function Dashboard({ setPage, currentOption }) {
 
       const data = await response.json();
 
-      if (!data) throw new Error("Invalid response");
+      if (!data || data.status === "Error") {
+        throw new Error(data.reasons?.[0] || "Analysis failed");
+      }
 
+      // 3. Update UI State with Backend Response
       setRisk(data.risk_score || 0);
       setStatus(data.status || "Complete");
       setReasons(data.reasons || []);
       setAction(data.action || "");
-
-      setSignals(
-        data.signals || {
-          url: 0,
-          text: 0,
-          attachment: 0,
-          voice: 0,
-        }
-      );
-
+      setSignals(data.signals || { url: 0, text: 0, attachment: 0, voice: 0 });
       setFraudType(data.fraud_type || "Unknown");
       setConfidence(data.confidence || 0);
 
       setShowResult(true);
     } catch (e) {
       console.error(e);
-      alert("Backend error or invalid response");
+      alert("System Error: " + e.message);
     }
   };
 
@@ -133,7 +137,7 @@ export default function Dashboard({ setPage, currentOption }) {
       <div style={styles.mainContent}>
         {!showResult ? (
           <div style={styles.scanPanel}>
-            <h2>{currentOption || "Scan"}</h2>
+            <h2>Scan {currentOption || "Email"}</h2>
 
             {currentOption === "Attachment" ? (
               <>
@@ -142,18 +146,17 @@ export default function Dashboard({ setPage, currentOption }) {
                   style={styles.fileInput}
                   onChange={(e) => setEmail(e.target.files[0])}
                 />
-
                 {email instanceof File && (
                   <div style={styles.fileBox}>
-                    {email.name}
-                    <button onClick={() => setEmail("")}>✕</button>
+                    📄 {email.name}
+                    <button onClick={() => setEmail("")} style={{marginLeft: '10px', color: 'red', cursor: 'pointer'}}>✕</button>
                   </div>
                 )}
               </>
             ) : (
               <textarea
                 style={styles.textareaOptimized}
-                placeholder="Paste email content here..."
+                placeholder={`Paste ${currentOption || 'email'} content here...`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -165,33 +168,27 @@ export default function Dashboard({ setPage, currentOption }) {
           </div>
         ) : (
           <div style={styles.sideBySideContainer}>
+            {/* Left Side: Original Content */}
             <div style={styles.scanPanelSide}>
-              <h2>{currentOption || "Scan"}</h2>
-
+              <h2>Source Content</h2>
               {typeof email === "string" ? (
                 <div
-                  style={{
-                    ...styles.textareaOptimized,
-                    overflow: "auto",
-                    whiteSpace: "pre-wrap"
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: highlightText(email, reasons),
-                  }}
+                  style={{ ...styles.textareaOptimized, overflow: "auto", whiteSpace: "pre-wrap" }}
+                  dangerouslySetInnerHTML={{ __html: highlightText(email, reasons) }}
                 />
               ) : (
-                <p>File uploaded: {email.name}</p>
+                <div style={styles.fileBox}>File: {email.name}</div>
               )}
-
-              <button style={styles.primaryBtn} onClick={analyze}>
-                Re-Scan
+              <button style={styles.primaryBtn} onClick={() => setShowResult(false)}>
+                New Scan
               </button>
             </div>
 
+            {/* Right Side: AI Results */}
             <div style={styles.riskPanelSide}>
               <div style={styles.panelContent}>
                 <h2 style={styles.riskAssessmentTitle}>Risk Assessment</h2>
-
+                
                 <div style={styles.semiCircleContainer}>
                   <svg width="160" height="95">
                     <path d="M 14 72 A 66 66 0 0 1 146 72" fill="none" stroke="#e0e0e0" strokeWidth="12" />
@@ -206,39 +203,36 @@ export default function Dashboard({ setPage, currentOption }) {
                 </div>
 
                 <h3>Type: {fraudType}</h3>
-                <h3>Confidence: {Math.round(confidence * 100)}%</h3>
+                <h3>Confidence: {typeof confidence === 'string' ? confidence : `${Math.round(confidence * 100)}%`}</h3>
 
                 <h4 style={styles.boldHeadingLeft}>Signal Breakdown:</h4>
-                {signals && Object.entries(signals).map(([key, value]) => (
+                {Object.entries(signals).map(([key, value]) => (
                   <div key={key} style={{ marginBottom: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>{key}</span>
+                      <span style={{textTransform: 'capitalize'}}>{key}</span>
                       <span>{value}%</span>
                     </div>
                     <div style={{ height: 8, background: "#eee", borderRadius: 6 }}>
                       <div style={{
                         width: `${value}%`,
                         height: "100%",
-                        background: getArcColor(value)
+                        background: getArcColor(value),
+                        borderRadius: 6,
+                        transition: 'width 0.5s ease-in-out'
                       }} />
                     </div>
                   </div>
                 ))}
 
                 <h4 style={styles.boldHeadingLeft}>Why flagged:</h4>
-                {reasons.map((r, i) => (
-                  <div key={i} style={{
-                    background: "#fff3f3",
-                    borderLeft: "4px solid red",
-                    padding: 8,
-                    marginBottom: 6
-                  }}>
+                {reasons.length > 0 ? reasons.map((r, i) => (
+                  <div key={i} style={{ background: "#fff3f3", borderLeft: "4px solid #d32f2f", padding: 8, marginBottom: 6, fontSize: '14px' }}>
                     ⚠️ {r}
                   </div>
-                ))}
+                )) : <p>No issues detected.</p>}
 
-                <h4 style={styles.boldHeadingLeft}>Action:</h4>
-                <p>{action}</p>
+                <h4 style={styles.boldHeadingLeft}>Action Required:</h4>
+                <p style={{fontSize: '14px'}}>{action}</p>
               </div>
             </div>
           </div>

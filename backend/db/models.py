@@ -11,13 +11,3 @@ class User(Base):
     role = Column(String, default="employee")  # employee / fraud
 
 
-class Scan(Base):
-    __tablename__ = "scans"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer)
-    input_type = Column(String)
-    content = Column(String)
-    result = Column(String)
-    risk_score = Column(String)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())

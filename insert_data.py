@@ -7,7 +7,8 @@ db = SessionLocal()
 users = [
     {"email": "milan@barclays.com", "password": "pass123", "role": "analyst"},
     {"email": "rahul@barclays.com", "password": "pass123", "role": "admin"},
-    {"email": "saakshi@barclays.com", "password": "pass345", "role": "analyst"}
+    {"email": "saakshi@barclays.com", "password": "pass345", "role": "analyst"},
+    {"email": "pragya@barclays.com", "password": "pass321", "role": "HR"}
 ]
 fraud_analysts = [
     {"email": "milan@barclays.com", "password": "pass123"},

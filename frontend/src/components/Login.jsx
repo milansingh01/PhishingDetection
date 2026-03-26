@@ -4,7 +4,8 @@ import Header from "./Header";
 import { styles } from "../styles/styles";
 
 export default function Login({ setPage, setRole }) {
-  const [username, setUsername] = useState("");
+  // 1. Use 'email' instead of 'username' to match the backend expectation
+  const [email, setEmail] = useState(""); 
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -13,19 +14,21 @@ export default function Login({ setPage, setRole }) {
       const response = await fetch("http://127.0.0.1:9000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: username, password }),
+        // 2. This now correctly sends the email state
+        body: JSON.stringify({ email, password }), 
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setRole(data.role);
-        setPage("select");
+        // 🔥 This saves the 'user' object from auth_routes.py
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setPage("dashboard");
       } else {
-        setError(data.detail || "Invalid Credentials");
+        alert(data.detail || "Login Failed");
       }
-    } catch {
-      setError("Cannot connect to server. Is the backend running?");
+    } catch (error) {
+      alert("Backend is not responding. Check port 9000.");
     }
   };
 
@@ -33,15 +36,14 @@ export default function Login({ setPage, setRole }) {
     <div style={styles.loginContainer}>
       <Header />
       <div style={styles.loginCard}>
-        <img src={logoCenter} style={styles.centerLogoLarge} alt="center logo" />
-
+        <img src={logoCenter} style={styles.centerLogoLarge} alt="logo" />
         <h2 style={styles.title}>Barclays Secure Login</h2>
 
         <input
-          placeholder="User ID"
+          placeholder="Barclays Email"
           style={styles.input}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={email} // 3. Updated to email
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
@@ -55,8 +57,6 @@ export default function Login({ setPage, setRole }) {
         <button style={styles.primaryBtn} onClick={handleLogin}>
           Login
         </button>
-
-        {error && <p style={styles.error}>{error}</p>}
       </div>
     </div>
   );
